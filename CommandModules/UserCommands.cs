@@ -83,7 +83,7 @@ namespace DP_chan.CommandModules
         private async Task Save()
         {
             users.SaveUsers(true);
-            await Context.Channel.SendMessageAsync("User list saved.");
+            await Context.Channel.SendMessageAsync("User list backup saved.");
         }
     }
 }

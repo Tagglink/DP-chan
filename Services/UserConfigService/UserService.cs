@@ -81,9 +81,11 @@ namespace DP_chan.Services.UserConfigService
         {
             if (backup)
             {
+                json.SaveProperly(users, userPath + usersBackupFilename);
+            }
+            else {
                 json.SaveProperly(users, userPath + usersFilename);
             }
-            json.SaveProperly(users, userPath + usersFilename);
         }
 
         public User GetUser(ulong userId)

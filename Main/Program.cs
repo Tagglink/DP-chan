@@ -24,29 +24,68 @@ namespace DP_chan.Main
             Program program = new Program();
             program.MainAsync().GetAwaiter().GetResult();
         }
-
-        private CommandService mCommands;
         private DiscordSocketClient mClient;
-        private Json json;
-        private BotSettings settings;
-        private readonly string settingsFilename;
+        private Json mJson;
+        private BotSettings mSettings;
+        private readonly string mSettingsFilename;
+        private WebFetcher mWebFetcher;
+        private UserService mUserService;
+        private ImageBoardFetcher mImageBoardFetcher;
+        private CommandHandler mCommandHandler;
 
         private Program()
         {
             mClient = new DiscordSocketClient();
-            mCommands = new CommandService();
-            json = new Json();
+            mJson = new Json();
 
-            settingsFilename = "settings.json";
-            settings = Json.Open<BotSettings>(settingsFilename);
-            if (settings == null)
-            {
-                settings = DefaultSettings();
-                json.SaveProperly(settings, settingsFilename);
+            mSettingsFilename = "settings.json";
+            try {
+                mSettings = ReadSettings(mSettingsFilename);
+            }
+            catch (SettingsNotFoundException exc) {
+                Console.WriteLine(exc.Message);
+                mSettings = DefaultSettings();
+
+                mJson.SaveProperly(mSettings, mSettingsFilename);
             }
             
             mClient.Log += Log;
-            mCommands.Log += Log;
+
+            InitServices();
+            InitCommandHandler();
+        }
+
+        private void InitServices() { 
+            mWebFetcher = new WebFetcher();
+            mUserService = new UserService(mJson, mSettings.dataPath);
+            mImageBoardFetcher = new ImageBoardFetcher(mJson, mSettings.dataPath + "img/", mSettings.dataPath);
+        }
+
+        private void InitCommandHandler() { 
+            mCommandHandler = new CommandHandler(mClient, mSettings.commandPrefix);
+
+            IServiceProvider services = new ServiceCollection()
+                .AddSingleton(mCommandHandler)
+                .AddSingleton(mClient)
+                .AddSingleton(mJson)
+                .AddSingleton(mUserService)
+                .AddSingleton(mWebFetcher)
+                .AddSingleton(mImageBoardFetcher)
+                .BuildServiceProvider();
+
+            mCommandHandler.Services = services;
+            mCommandHandler.Log = Log;
+        }
+
+        private BotSettings ReadSettings(string filepath) {
+            BotSettings ret;
+            ret = Json.Open<BotSettings>(filepath);
+            if (ret == null)
+            {
+                throw new SettingsNotFoundException();
+            }
+
+            return ret;
         }
 
         private BotSettings DefaultSettings()
@@ -86,59 +125,14 @@ namespace DP_chan.Main
 
         private async Task MainAsync()
         {
-            string token = settings.botToken;
+            string token = mSettings.botToken;
 
-            await InitCommands();
+            await mCommandHandler.InitCommands();
 
             await mClient.LoginAsync(TokenType.Bot, token);
             await mClient.StartAsync();
 
             await Task.Delay(-1);
-        }
-
-        private IServiceProvider mServices;
-
-        private async Task InitCommands()
-        {
-            WebFetcher webFetcher = new WebFetcher();
-            UserService userService = new UserService(json, settings.dataPath);
-            ImageBoardFetcher imageBoardFetcher = new ImageBoardFetcher(json, settings.dataPath + "img/", settings.dataPath);
-
-            mServices = new ServiceCollection()
-                .AddSingleton(mClient)
-                .AddSingleton(mCommands)
-                .AddSingleton(json)
-                .AddSingleton(userService)
-                .AddSingleton(webFetcher)
-                .AddSingleton(imageBoardFetcher)
-                .BuildServiceProvider();
-
-            mClient.MessageReceived += HandleCommandAsync;
-            
-            await mCommands.AddModuleAsync<TestCommands>();
-            await mCommands.AddModuleAsync<ImageBoardCommands>();
-            await mCommands.AddModuleAsync<UserCommands>();
-        }
-
-        private async Task HandleCommandAsync(SocketMessage arg)
-        {
-            var message = arg as SocketUserMessage;
-            if (message == null) return;
-
-            if (message.Author.Id == mClient.CurrentUser.Id || message.Author.IsBot) return;
-
-            int pos = 0;
-
-            if (message.HasCharPrefix(settings.commandPrefix, ref pos))
-            {
-                var context = new SocketCommandContext(mClient, message);
-
-                var result = await mCommands.ExecuteAsync(context, pos, mServices);
-                if (!result.IsSuccess)
-                {
-                    await context.Channel.SendMessageAsync(result.ErrorReason);
-                }
-            }
         }
     }
 }
