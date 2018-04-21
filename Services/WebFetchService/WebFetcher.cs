@@ -7,7 +7,7 @@ using HtmlAgilityPack;
 
 namespace DP_chan.Services.WebFetchService
 {
-    class WebFetcher
+    public class WebFetcher
     {
         private WebClient mClient;
         private HtmlWeb mWeb;

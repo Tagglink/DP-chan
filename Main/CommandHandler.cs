@@ -34,10 +34,12 @@ namespace DP_chan.Main {
         private IServiceProvider mServices;
 
         private DiscordSocketClient mClient;
+        private UserService mUserService;
         private char mCommandPrefix;
 
-        public CommandHandler(DiscordSocketClient client, char commandPrefix) { 
+        public CommandHandler(UserService userService, DiscordSocketClient client, char commandPrefix) { 
             Paused = false;
+            mUserService = userService;
             mClient = client;
             mCommandPrefix = commandPrefix;
             mCommands = new CommandService();
@@ -51,6 +53,7 @@ namespace DP_chan.Main {
             await mCommands.AddModuleAsync<ImageBoardCommands>();
             await mCommands.AddModuleAsync<UserCommands>();
             await mCommands.AddModuleAsync<BotControlCommands>();
+            await mCommands.AddModuleAsync<FileCommands>();
         }
 
         public async Task HandleCommandAsync(SocketMessage arg)
@@ -64,7 +67,10 @@ namespace DP_chan.Main {
 
             if (message.HasCharPrefix(mCommandPrefix, ref pos))
             {
-                if (Paused && !CommandIsUnpausable(message.Content)) return;
+                CommandInfo command = GetCommand(message.Content);
+                User user = mUserService.AddIfNull(message.Author);
+                if (Paused && !CommandIsUnpausable(command)) return;
+                if (!UserHasPermission(user, command)) return;
 
                 var context = new SocketCommandContext(mClient, message);
 
@@ -76,8 +82,22 @@ namespace DP_chan.Main {
             }
         }
 
-        private bool CommandIsUnpausable(string message) {
-            CommandInfo command = GetCommand(message);
+        private bool UserHasPermission(User user, CommandInfo command) {
+            if (command == null) return false;
+
+            foreach (var attr in command.Attributes) {
+                if (attr is RequirePermissionAttribute) {
+                    RequirePermissionAttribute req = attr as RequirePermissionAttribute;
+                    
+                    if (!user.settings.CheckSettingBool(req.Permission)) {
+                        throw new PermissionDeclinedException(req.Permission);
+                    }
+                }
+            }
+            return true;
+        }
+
+        private bool CommandIsUnpausable(CommandInfo command) {
             if (command == null) return false;
 
             return command.Attributes.Any((attr) => attr is UnpausableAttribute);

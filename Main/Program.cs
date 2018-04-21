@@ -9,11 +9,12 @@ using Discord;
 using Discord.WebSocket;
 using Discord.Commands;
 using Microsoft.Extensions.DependencyInjection;
+using DP_chan.CommandModules;
 using DP_chan.Services.WebFetchService;
 using DP_chan.Services.UserConfigService;
 using DP_chan.Services.JsonService;
 using DP_chan.Services.ImageFetchService;
-using DP_chan.CommandModules;
+using DP_chan.Services.FileDatabaseService;
 
 namespace DP_chan.Main
 {
@@ -31,6 +32,7 @@ namespace DP_chan.Main
         private WebFetcher mWebFetcher;
         private UserService mUserService;
         private ImageBoardFetcher mImageBoardFetcher;
+        private FileDatabase mFileDatabase;
         private CommandHandler mCommandHandler;
 
         private Program()
@@ -59,10 +61,11 @@ namespace DP_chan.Main
             mWebFetcher = new WebFetcher();
             mUserService = new UserService(mJson, mSettings.dataPath);
             mImageBoardFetcher = new ImageBoardFetcher(mJson, mSettings.dataPath + "img/", mSettings.dataPath);
+            mFileDatabase = new FileDatabase(mJson, mWebFetcher, mSettings.dataPath + "files/", mSettings.dataPath);
         }
 
         private void InitCommandHandler() { 
-            mCommandHandler = new CommandHandler(mClient, mSettings.commandPrefix);
+            mCommandHandler = new CommandHandler(mUserService, mClient, mSettings.commandPrefix);
 
             IServiceProvider services = new ServiceCollection()
                 .AddSingleton(mCommandHandler)
@@ -71,6 +74,7 @@ namespace DP_chan.Main
                 .AddSingleton(mUserService)
                 .AddSingleton(mWebFetcher)
                 .AddSingleton(mImageBoardFetcher)
+                .AddSingleton(mFileDatabase)
                 .BuildServiceProvider();
 
             mCommandHandler.Services = services;

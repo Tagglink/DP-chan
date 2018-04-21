@@ -1,0 +1,3 @@
+tag aliases for the image board commands
+a way to browse image pools in image boards
+prevent users from adding files that overload the harddrive's memory

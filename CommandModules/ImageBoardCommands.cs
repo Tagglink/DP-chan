@@ -31,14 +31,14 @@ namespace DP_chan.CommandModules
         private UserService users;
 
         [Command("image")]
-        private async Task Image(string board, string tagStr, int page = 1, int index = -1)
+        private async Task Image(string board, string tagStr, int page = 1, int index = 0)
         {
             ulong userId = Context.User.Id;
             users.AddIfNull(Context.User);
             bool safe = users.CheckSettingBool(userId, "safe");
 
             string[] tags = tagStr.Split(' ');
-            string filepath = imageBoardFetcher.GetImage(board, tags, page, index, safe);
+            string filepath = imageBoardFetcher.GetImage(board, tags, page, index - 1, safe);
 
             await Context.Channel.SendFileAsync(filepath);
         }

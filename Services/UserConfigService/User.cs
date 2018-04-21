@@ -8,7 +8,7 @@ using Newtonsoft.Json;
 namespace DP_chan.Services.UserConfigService
 {
     [JsonObject]
-    class User
+    public class User
     {
         [JsonProperty]
         public ulong userId;

@@ -8,7 +8,7 @@ using Newtonsoft.Json;
 namespace DP_chan.Services.UserConfigService
 {
     [JsonDictionary]
-    class UserSettings : Dictionary<string, object>
+    public class UserSettings : Dictionary<string, object>
     { 
         public UserSettings()
         {
@@ -24,6 +24,18 @@ namespace DP_chan.Services.UserConfigService
                     Add("safe", true);
                     Add("botadmin", true);
                     break;
+                case "user":
+                    Add("safe", true);
+                    Add("botadmin", false);
+                    break;
+            }
+        }
+
+        public bool CheckSettingBool(string setting) {
+            if (ContainsKey(setting)){
+                return (bool)this[setting];
+            } else {
+                return false;
             }
         }
 

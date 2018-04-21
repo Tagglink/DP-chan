@@ -5,6 +5,7 @@ using System.IO;
 using System.Linq;
 using DP_chan.Services.WebFetchService;
 using DP_chan.Services.JsonService;
+using DP_chan.Extensions;
 
 namespace DP_chan.Services.ImageFetchService
 {
@@ -17,9 +18,8 @@ namespace DP_chan.Services.ImageFetchService
         private readonly string dataPath;
         private readonly string dataFilename;
         private readonly int cacheLimit;
-        private readonly int maxFilepathLength;
 
-        private List<Image> images;
+        private List<BoardImage> images;
 
         public ImageBoardFetcher(Json json, string imagePath, string dataPath)
         {
@@ -27,16 +27,15 @@ namespace DP_chan.Services.ImageFetchService
             this.json = json;
             this.imagePath = imagePath;
             this.dataPath = dataPath;
-            dataFilename = "images.json";
+            dataFilename = "board_images.json";
             cacheLimit = 50;
-            maxFilepathLength = 259;
 
             images = Load();
             if (images == null)
             {
-                images = new List<Image>();
+                images = new List<BoardImage>();
             }
-
+ 
             if (!Directory.Exists(imagePath))
             {
                 Directory.CreateDirectory(imagePath);
@@ -50,35 +49,20 @@ namespace DP_chan.Services.ImageFetchService
             HtmlDocument doc = DownloadDocument(url);
             string imageURI = searcher.GetImageURI(doc, board, index);
 
-            string filepath = GetFilepath(imageURI);
+            string filepath = StringExtensions.GetFilepath(imageURI, imagePath);
             
             if (!File.Exists(filepath))
             {
-                Image img = DownloadImage(imageURI, filepath);
+                BoardImage img = DownloadImage(imageURI, filepath);
                 AddImage(img);
             }
 
             return filepath;
         }
 
-        private string GetFilepath(string imageURI)
+        private BoardImage DownloadImage(string imageURI, string filepath)
         {
-            string filename = Path.GetFileName(imageURI);
-            string filepath = imagePath + filename;
-
-            int diff = maxFilepathLength - filepath.Length;
-
-            if (diff < 0)
-            {
-                filepath = imagePath + filename.Remove(0, -diff);
-            }
-
-            return filepath;
-        }
-
-        private Image DownloadImage(string imageURI, string filepath)
-        {
-            Image img = new Image();
+            BoardImage img = new BoardImage();
             DownloadFile(imageURI, filepath);
 
             img.timeDownloaded = DateTime.Now;
@@ -96,7 +80,7 @@ namespace DP_chan.Services.ImageFetchService
 
             for (int i = 0; i < images.Count; i++)
             {
-                Image img = images[i];
+                BoardImage img = images[i];
                 if (img.timeDownloaded.CompareTo(oldestTime) < 0)
                 {
                     oldestTime = img.timeDownloaded;
@@ -107,7 +91,7 @@ namespace DP_chan.Services.ImageFetchService
             RemoveImage(oldestIndex);
         }
 
-        private void AddImage(Image img)
+        private void AddImage(BoardImage img)
         {
             if (images.Count >= cacheLimit)
             {
@@ -119,7 +103,7 @@ namespace DP_chan.Services.ImageFetchService
 
         private void RemoveImage(int index)
         {
-            Image img = images[index];
+            BoardImage img = images[index];
             File.Delete(img.filepath);
             images.RemoveAt(index);
             Save();
@@ -130,9 +114,9 @@ namespace DP_chan.Services.ImageFetchService
             json.SaveProperly(images, dataPath + dataFilename);
         }
 
-        private List<Image> Load()
+        private List<BoardImage> Load()
         {
-            return Json.Open<List<Image>>(dataPath + dataFilename);
+            return Json.Open<List<BoardImage>>(dataPath + dataFilename);
         }
     }
 }

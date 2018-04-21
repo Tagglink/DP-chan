@@ -9,7 +9,7 @@ using Newtonsoft.Json.Linq;
 
 namespace DP_chan.Services.JsonService
 {
-    class Json
+    public class Json
     {
         private JsonSerializer serializer;
 

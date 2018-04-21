@@ -10,10 +10,9 @@ using DP_chan.Services.JsonService;
 
 namespace DP_chan.Services.UserConfigService
 {
-    class UserService
+    public class UserService
     {
         private Json json;
-
         private Dictionary<ulong, User> users;
         private User defaultUser;
 
@@ -21,12 +20,17 @@ namespace DP_chan.Services.UserConfigService
         private readonly string usersFilename;
         private readonly string usersBackupFilename;
 
+        // users who are not botadmin cannot set these settings
+        private readonly string[] protectedSettings;
+
         public UserService(Json json, string userPath)
         {
             this.userPath = userPath;
             this.json = json;
             usersFilename = "users.json";
             usersBackupFilename = "users.json.bak";
+
+            protectedSettings = new string[1]{ "botadmin" };
 
             if (!Directory.Exists(userPath)) {
                 Directory.CreateDirectory(userPath);
@@ -39,6 +43,18 @@ namespace DP_chan.Services.UserConfigService
         public string SetUserSetting(ulong userId, string setting, object value)
         {
             User user = users[userId];
+            
+            // if the user is not botadmin...
+            if (!user.settings.CheckSettingBool("botadmin")) {
+                // look through protected settings...
+                foreach (var s in protectedSettings) {
+                    // if match, decline permission
+                    if (s == setting) {
+                        throw new PermissionDeclinedException("botadmin");
+                    }
+                }
+            }
+
             user.settings[setting] = value;
 
             SaveUsers();
@@ -48,7 +64,7 @@ namespace DP_chan.Services.UserConfigService
 
         public bool CheckSettingBool(ulong userId, string setting)
         {
-            return (bool)GetSetting(userId, setting);
+            return GetUser(userId).settings.CheckSettingBool(setting);
         }
 
         public User AddIfNull(SocketUser userData)
